@@ -21,6 +21,41 @@ function generateRectangle(w, h, dx = 0, dy = 0) {
         }
 }
 
+function isIntersect(line1, line2) {
+    let point = { x: 0, y: 0 };
+
+    const isVert1 = line1.x1 === line1.x2;
+    const isVert2 = line2.x1 === line2.x2;
+
+    const a1 = (line1.y2 - line1.y1) / (line1.x2 - line1.x1);
+    const b1 = isVert1 ? 0 : line1.y1 - a1 * line1.x1;
+
+    const a2 = (line2.y2 - line2.y1) / (line2.x2 - line2.x1);
+    const b2 = isVert2 ? 0 : line2.y1 - a2 * line2.x1;
+
+    if (isVert1 && isVert2) {
+        point = { x: line1.x1, y: line2.y1 };
+    } else if (isVert1) {
+        point = { x: line1.x1, y: a2 * line1.x1 + b2 };
+    } else if (isVert2) {
+        point = { x: line2.x1, y: a1 * line2.x1 + b1 };
+    } else if (a1 === a2) {
+    } else {
+        point = { x: (b2 - b1) / (a1 - a2), y: a1 * (b2 - b1) / (a1 - a2) + b1 };
+    }
+
+    const isParallel = a1 === a2;
+    if (isParallel) return false;
+
+    const x = (b2 - b1) / (a1 - a2);
+    const y = a1 * x + b1;
+
+    const isOnLine1 = x >= Math.min(line1.x1, line1.x2) && x <= Math.max(line1.x1, line1.x2) && y >= Math.min(line1.y1, line1.y2) && y <= Math.max(line1.y1, line1.y2);
+    const isOnLine2 = x >= Math.min(line2.x1, line2.x2) && x <= Math.max(line2.x1, line2.x2) && y >= Math.min(line2.y1, line2.y2) && y <= Math.max(line2.y1, line2.y2);
+
+    return isOnLine1 && isOnLine2;
+}
+
 // Правильный многоугольник (углы тупые)
 function generatePolygon(sides, radius, dx = 0, dy = 0) {
     const points = [];
@@ -35,6 +70,7 @@ function generatePolygon(sides, radius, dx = 0, dy = 0) {
         shape: points,
         //color: { r: 200, g: 100, b: 100 }
         color: { r: Math.random() * 255, g: Math.random() * 255, b: Math.random() * 255 }
+        //color: { r: 128, g: 128, b: 128 }
     };
 }
 
@@ -180,9 +216,9 @@ function draw(x, y, rayCount, depth, step, optimize = 1) {
             //lastRay = { x: ray.x + step * dir.x, y: ray.y + step * dir.y };
         }
         ctx.beginPath()
-            ctx.moveTo(lastHitPoint.x, lastHitPoint.y)
-            ctx.lineTo(ray.x, ray.y)
-            ctx.stroke()
+        ctx.moveTo(lastHitPoint.x, lastHitPoint.y)
+        ctx.lineTo(ray.x, ray.y)
+        ctx.stroke()
         //return { x: Math.floor(ray.x), y: Math.floor(ray.y), theta: a, depth: depth, r: 0, g: 0, b: 0 };
         return { x: ray.x, y: ray.y, theta: a, depth: depth, r: accumulatedColor.r, g: accumulatedColor.g, b: accumulatedColor.b };
     }
@@ -235,6 +271,11 @@ const bloomCtx = bloomCanvas.getContext('2d');
 bloomCanvas.width = W;
 bloomCanvas.height = 100;
 
+const bloomCanvas2 = document.createElement('canvas');
+const bloomCtx2 = bloomCanvas2.getContext('2d');
+bloomCanvas2.width = W;
+bloomCanvas2.height = H;
+
 const traceCanvas = document.getElementById('canvas2');
 traceCanvas.width = W;
 traceCanvas.height = 100;
@@ -242,7 +283,11 @@ const traceCtx = traceCanvas.getContext('2d');
 
 const diagonal = Math.hypot(W, H);
 
-canvas.onmousemove = (e) => {
+let mouseX = 0;
+let mouseY = 0;
+
+const render = () => {
+    const e = { offsetX: mouseX, offsetY: mouseY };
     traceCtx.clearRect(0, 0, W, H);
     const rays = draw(e.offsetX, e.offsetY, 128, diagonal * 2, 50, 4);
     //rays.sort((a, b) => a.theta - b.theta);
@@ -264,8 +309,16 @@ canvas.onmousemove = (e) => {
         traceCtx.fillRect(Math.round(x1), 0, x2 - x1 + 1, H);
     })
     applyBloom(traceCtx, traceCanvas, bloomCtx, bloomCanvas);
+    applyBloom(ctx, canvas, bloomCtx2, bloomCanvas2);
+    requestAnimationFrame(render);
+}
+canvas.onmousemove = (e) => {
+    mouseX = e.offsetX;
+    mouseY = e.offsetY;
 }
 
 const fpsCounter = new FPS(100);
 fpsCounter.subscribe((fps) => fpsEl.textContent = fps.toString());
 fpsCounter.start();
+
+render();
