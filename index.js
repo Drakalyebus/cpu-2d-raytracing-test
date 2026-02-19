@@ -8,6 +8,40 @@ import pointInPolygon from "./intersect.js";
 import FPS from "./fpsCounter.js";
 const fpsEl = document.getElementById('fps');
 
+/**
+ * Находит пересечение двух отрезков.
+ * @param {Object} s1 - Отрезок 1 {p1: {x, y}, p2: {x, y}}
+ * @param {Object} s2 - Отрезок 2 {p1: {x, y}, p2: {x, y}}
+ */
+function getIntersection(s1, s2) {
+    const x1 = s1.p1.x, y1 = s1.p1.y;
+    const x2 = s1.p2.x, y2 = s1.p2.y;
+    const x3 = s2.p1.x, y3 = s2.p1.y;
+    const x4 = s2.p2.x, y4 = s2.p2.y;
+
+    // Знаменатель (определитель)
+    const det = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3);
+
+    // Если det равен 0, отрезки параллельны
+    if (det === 0) {
+        return { haveIntersection: false };
+    }
+
+    const t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / det;
+    const u = ((x3 - x1) * (y2 - y1) - (y3 - y1) * (x2 - x1)) / det;
+
+    // Отрезки пересекаются, если параметры t и u лежат в диапазоне [0, 1]
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+        return {
+            haveIntersection: true,
+            x: x1 + t * (x2 - x1),
+            y: y1 + t * (y2 - y1)
+        };
+    }
+
+    return { haveIntersection: false };
+}
+
 // Прямоугольник
 function generateRectangle(w, h, dx = 0, dy = 0) {
     return {
@@ -19,41 +53,6 @@ function generateRectangle(w, h, dx = 0, dy = 0) {
             ],
             color: { r: 100, g: 200, b: 100 }
         }
-}
-
-function isIntersect(line1, line2) {
-    let point = { x: 0, y: 0 };
-
-    const isVert1 = line1.x1 === line1.x2;
-    const isVert2 = line2.x1 === line2.x2;
-
-    const a1 = (line1.y2 - line1.y1) / (line1.x2 - line1.x1);
-    const b1 = isVert1 ? 0 : line1.y1 - a1 * line1.x1;
-
-    const a2 = (line2.y2 - line2.y1) / (line2.x2 - line2.x1);
-    const b2 = isVert2 ? 0 : line2.y1 - a2 * line2.x1;
-
-    if (isVert1 && isVert2) {
-        point = { x: line1.x1, y: line2.y1 };
-    } else if (isVert1) {
-        point = { x: line1.x1, y: a2 * line1.x1 + b2 };
-    } else if (isVert2) {
-        point = { x: line2.x1, y: a1 * line2.x1 + b1 };
-    } else if (a1 === a2) {
-    } else {
-        point = { x: (b2 - b1) / (a1 - a2), y: a1 * (b2 - b1) / (a1 - a2) + b1 };
-    }
-
-    const isParallel = a1 === a2;
-    if (isParallel) return false;
-
-    const x = (b2 - b1) / (a1 - a2);
-    const y = a1 * x + b1;
-
-    const isOnLine1 = x >= Math.min(line1.x1, line1.x2) && x <= Math.max(line1.x1, line1.x2) && y >= Math.min(line1.y1, line1.y2) && y <= Math.max(line1.y1, line1.y2);
-    const isOnLine2 = x >= Math.min(line2.x1, line2.x2) && x <= Math.max(line2.x1, line2.x2) && y >= Math.min(line2.y1, line2.y2) && y <= Math.max(line2.y1, line2.y2);
-
-    return isOnLine1 && isOnLine2;
 }
 
 // Правильный многоугольник (углы тупые)
@@ -158,6 +157,71 @@ function draw(x, y, rayCount, depth, step, optimize = 1) {
     ctx.fillRect(0, 0, W, H);
     const theta = Math.PI * 2 / rayCount;
     let rays = [];
+//     const trace = (a, step = 5, prevRay = {x, y, theta: a, r: 255, g: 255, b: 255}) => {
+//     if (step === 0) {
+//         return { ...prevRay };
+//     }
+//     let dir = { x: Math.cos(a), y: Math.sin(a) };
+//     // Отрезок луча (от игрока в бесконечность)
+//     const l1 = { p1: { x: prevRay.x, y: prevRay.y }, p2: { x: prevRay.x + dir.x * 2000, y: prevRay.y + dir.y * 2000 } };
+    
+//     let closestHit = null;
+//     let minDistance = Infinity;
+
+//     let hitObj = null
+
+//     // Перебираем все объекты
+//     for (let i = 0; i < objects.length; i++) {
+//         const obj = objects[i];
+        
+//         // Перебираем все грани объекта
+//         for (let j = 0; j < obj.shape.length; j++) {
+//             const p1 = obj.shape[j];
+//             const p2 = obj.shape[(j + 1) % obj.shape.length];
+            
+//             const hit = getIntersection(l1, { p1, p2 });
+            
+//             if (hit.haveIntersection) {
+//                 // Считаем расстояние до точки пересечения
+//                 const dx = hit.x - prevRay.x;
+//                 const dy = hit.y - prevRay.y;
+//                 const dist = dx * dx + dy * dy; // Используем квадрат расстояния (быстрее)
+
+//                 if (dist > 0.1 && dist < minDistance) {
+//                     hitObj = obj
+//                     minDistance = dist;
+//                     closestHit = {
+//                         x: hit.x,
+//                         y: hit.y,
+//                         theta: a,
+//                         r: obj.color.r * prevRay.r / 255,
+//                         g: obj.color.g * prevRay.g / 255,
+//                         b: obj.color.b * prevRay.b / 255
+//                     };
+//                 }
+//             }
+//         }
+//     }
+//     if (closestHit) {
+//         const normal = getNormalAt(closestHit.x, closestHit.y, hitObj.shape);
+//         // Отражаем вектор направления относительно нормали
+//         const dot = dir.x * normal.x + dir.y * normal.y;
+//         const rx = dir.x - 2 * dot * normal.x;
+//         const ry = dir.y - 2 * dot * normal.y;
+//         const nextAngle = Math.atan2(ry, rx);
+        
+//         return trace(nextAngle, step - 1, closestHit);
+//     }
+
+//     // Если нашли пересечение — возвращаем его, иначе — конец луча
+//     return { 
+//         x: l1.p2.x, 
+//         y: l1.p2.y, 
+//         theta: a, 
+//         r: 0, g: 0, b: 0 
+//     };
+// }
+
     const trace = (a, step) => {
         let dir = { x: Math.cos(a), y: Math.sin(a) };
         let accumulatedColor = { r: 255, g: 255, b: 255 };
@@ -285,9 +349,11 @@ const diagonal = Math.hypot(W, H);
 
 let mouseX = 0;
 let mouseY = 0;
+let x = 0;
+let y = 0;
 
 const render = () => {
-    const e = { offsetX: mouseX, offsetY: mouseY };
+    const e = { offsetX: x, offsetY: y };
     traceCtx.clearRect(0, 0, W, H);
     const rays = draw(e.offsetX, e.offsetY, 128, diagonal * 2, 50, 4);
     //rays.sort((a, b) => a.theta - b.theta);
@@ -310,6 +376,8 @@ const render = () => {
     })
     applyBloom(traceCtx, traceCanvas, bloomCtx, bloomCanvas);
     applyBloom(ctx, canvas, bloomCtx2, bloomCanvas2);
+    x += (mouseX - x) / 50;
+    y += (mouseY - y) / 50;
     requestAnimationFrame(render);
 }
 canvas.onmousemove = (e) => {
