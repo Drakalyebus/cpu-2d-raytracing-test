@@ -256,12 +256,12 @@ function draw(x, y, rayCount, depth, step, optimize = 1) {
                     const newJ = epoch - step;
                     const newRay = { x: dir.x * newJ + ray.x, y: dir.y * newJ + ray.y };
                     //ctx.fillRect(newRay.x, newRay.y, 1, 1);
-                    const newHit = objects.filter((_, i) => {
-                        const obj = boundingBoxes[i];
-                        const isInBoundingBox = newRay.x >= obj.min.x && newRay.x <= obj.max.x && newRay.y >= obj.min.y && newRay.y <= obj.max.y;
-                        return isInBoundingBox
-                    }).find(obj => pointInPolygon(newRay, obj.shape));
-                    //const newHit = pointInPolygon(newRay, hit.shape);
+                    // const newHit = objects.filter((_, i) => {
+                    //     const obj = boundingBoxes[i];
+                    //     const isInBoundingBox = newRay.x >= obj.min.x && newRay.x <= obj.max.x && newRay.y >= obj.min.y && newRay.y <= obj.max.y;
+                    //     return isInBoundingBox
+                    // }).find(obj => pointInPolygon(newRay, obj.shape));
+                    const newHit = pointInPolygon(newRay, hit.shape);
                     if (newHit) {
                         ctx.beginPath()
                         ctx.moveTo(lastHitPoint.x, lastHitPoint.y)
@@ -290,6 +290,9 @@ function draw(x, y, rayCount, depth, step, optimize = 1) {
         ctx.moveTo(lastHitPoint.x, lastHitPoint.y)
         ctx.lineTo(ray.x, ray.y)
         ctx.stroke()
+        if (hitCount === 0) {
+            accumulatedColor = { r: 0, g: 0, b: 0 };
+        }
         //return { x: Math.floor(ray.x), y: Math.floor(ray.y), theta: a, depth: depth, r: 0, g: 0, b: 0 };
         return { x: ray.x, y: ray.y, theta: a, depth: depth, r: accumulatedColor.r, g: accumulatedColor.g, b: accumulatedColor.b };
     }
@@ -308,7 +311,7 @@ function draw(x, y, rayCount, depth, step, optimize = 1) {
             //const distBetweenHits = Math.abs(Math.hypot(x - r1.x, y - r1.y) - Math.hypot(x - r2.x, y - r2.y));
             //const angleDiff = Math.abs(Math.atan2(r1.y - y, r1.x - x) - Math.atan2(r2.y - y, r2.x - x))
             const colorDiff = (Math.abs(Math.min(r1.r, 255) - Math.min(r2.r, 255)) + Math.abs(Math.min(r1.g, 255) - Math.min(r2.g, 255)) + Math.abs(Math.min(r1.b, 255) - Math.min(r2.b, 255))) / constant;
-            if (colorDiff >= 0.1) {
+            if (colorDiff >= 0.01) {
                 const midAngle = angleMid(r1.theta, r2.theta);
                 const newRay = trace(midAngle, step);
                 //rays = [...rays.slice(0, i), newRay, ...rays.slice(i + 1)];
