@@ -144,18 +144,15 @@ function getNormalAt(px, py, shape) {
 }
 
 class LookupTable {
-    constructor(func, max, min, samples) {
-        this.func = func;
-        this.max = max;
+    constructor(func, max, min, samples, precision = 32) {
         this.min = min;
-        this.samples = samples;
         this.factor = (samples - 1) / (max - min);
-        this.table = Float32Array.from({ length: samples }, (_, i) => func(i / (samples - 1) * (max - min) + min));
-        //this.table = new Array(samples).fill(0).map((_, i) => func(i / (samples - 1) * (max - min) + min));
+        this.factor2 = (max - min) / (samples - 1);
+        this.table = (precision === 32 ? Float32Array : (precision === 64 ? Float64Array : Array)).from({ length: samples }, (_, i) => func(i * this.factor2 + min));
     }
 
     get(x) {
-        const index = Math.floor((x - this.min) * this.factor);
+        const index = ((x - this.min) * this.factor) | 0;
         return this.table[index];
     }
 }
