@@ -143,6 +143,25 @@ function getNormalAt(px, py, shape) {
     return normal;
 }
 
+class LookupTable {
+    constructor(func, max, min, samples) {
+        this.func = func;
+        this.max = max;
+        this.min = min;
+        this.samples = samples;
+        this.factor = (samples - 1) / (max - min);
+        this.table = Float32Array.from({ length: samples }, (_, i) => func(i / (samples - 1) * (max - min) + min));
+        //this.table = new Array(samples).fill(0).map((_, i) => func(i / (samples - 1) * (max - min) + min));
+    }
+
+    get(x) {
+        const index = Math.floor((x - this.min) * this.factor);
+        return this.table[index];
+    }
+}
+
+const sinLUT = new LookupTable(Math.sin, Math.PI * 2, 0, W);
+const cosLUT = new LookupTable(Math.cos, Math.PI * 2, 0, W);
 
 function angleMid(a, b) {
     let diff = b - a;
@@ -225,7 +244,7 @@ function draw(x, y, rayCount, depth, step, optimize = 1) {
 // }
 
     const trace = (a, step) => {
-        let dir = { x: Math.cos(a), y: Math.sin(a) };
+        let dir = { x: cosLUT.get(a), y: sinLUT.get(a) };
         let accumulatedColor = { r: 255, g: 255, b: 255 };
         let lastHitPoint = {x, y}
         let ray = { x, y };
@@ -273,7 +292,8 @@ function draw(x, y, rayCount, depth, step, optimize = 1) {
                         // accumulatedColor = { r: accumulatedColor.r * hitColor.r / 255, g: accumulatedColor.g * hitColor.g / 255, b: accumulatedColor.b * hitColor.b / 255 };
                         // return { x: newRay.x, y: newRay.y, theta: a, depth: j, r: accumulatedColor.r, g: accumulatedColor.g, b: accumulatedColor.b };
                         lastHitPoint = {x: newRay.x, y: newRay.y}
-                        accumulatedColor = { r: accumulatedColor.r * hitColor.r / 255 / totalJ * 100, g: accumulatedColor.g * hitColor.g / 255 / totalJ * 100, b: accumulatedColor.b * hitColor.b / 255 / totalJ * 100 };
+                        const factor = 100 / 255 / totalJ
+                        accumulatedColor = { r: accumulatedColor.r * hitColor.r * factor, g: accumulatedColor.g * hitColor.g * factor, b: accumulatedColor.b * hitColor.b * factor };
                         const normal = getNormalAt(newRay.x, newRay.y, hit.shape, 1);
                         const dot = dir.x * normal.x + dir.y * normal.y;
                         dir.x = dir.x - 2 * dot * normal.x;
@@ -299,6 +319,12 @@ function draw(x, y, rayCount, depth, step, optimize = 1) {
     for (let i = 0; i < Math.PI * 2; i += theta) {
         rays.push(trace(i, step));
     }
+    // objects.forEach(obj => {
+    //     obj.shape.forEach(point => {
+    //         rays.push(trace(Math.atan2(point.y - y, point.x - x), step));
+    //     })
+    // })
+    rays.sort((a, b) => a.theta - b.theta);
     const constant = 255 * 3
 
     for (let epoch = 0; epoch < optimize; epoch++) {
@@ -364,7 +390,6 @@ let y = 0;
 
 const render = () => {
     const e = { offsetX: x, offsetY: y };
-    traceCtx.clearRect(0, 0, W, H);
     const rays = draw(e.offsetX, e.offsetY, 128, diagonal * 2, 50, 4);
     //rays.sort((a, b) => a.theta - b.theta);
     // const grad = traceCtx.createLinearGradient(0, 0, W, 0);
