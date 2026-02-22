@@ -19,7 +19,8 @@ class LookupTable {
     }
 }
 
-const sinLUT = new LookupTable(Math.sin, Math.PI * 2, 0, 2)
-const cosLUT = new LookupTable(Math.cos, Math.PI * 2, 0, 2)
+const LUT = new LookupTable(Math.tanh, Math.PI * 2, 0, 200)
 
-console.log(sinLUT.get(2), Math.sin(2))
+for (let epoch = 0; epoch < 100000; epoch++) {
+    Math.tanh(0.5)
+}

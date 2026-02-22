@@ -157,8 +157,8 @@ class LookupTable {
     }
 }
 
-const sinLUT = new LookupTable(Math.sin, Math.PI * 2, 0, W);
-const cosLUT = new LookupTable(Math.cos, Math.PI * 2, 0, W);
+//const sinLUT = new LookupTable(Math.sin, Math.PI * 2, 0, W);
+//const cosLUT = new LookupTable(Math.cos, Math.PI * 2, 0, W);
 
 function angleMid(a, b) {
     let diff = b - a;
@@ -241,7 +241,7 @@ function draw(x, y, rayCount, depth, step, optimize = 1) {
 // }
 
     const trace = (a, step) => {
-        let dir = { x: cosLUT.get(a), y: sinLUT.get(a) };
+        let dir = { x: Math.cos(a), y: Math.sin(a) };
         let accumulatedColor = { r: 255, g: 255, b: 255 };
         let lastHitPoint = {x, y}
         let ray = { x, y };
