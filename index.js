@@ -74,14 +74,16 @@ function generatePolygon(sides, radius, dx = 0, dy = 0) {
 }
 
 // Массив объектов
-const objects = [
-    generatePolygon(9, 100, -250, -150),        // октагон справа
-    //generateRectangle(200, 100, -250, -150), // прямоугольник слева сверху
-    generatePolygon(9, 120, 250, 50),        // октагон справа
-    generatePolygon(9, 80, -200, 200),      // додекагон снизу слева
-    generatePolygon(9, 80, 200, 250),       // додекагон снизу справа
-    //generateRectangle(150, 150, 200, -200)   // квадрат справа сверху
-];
+// const objects = [
+//     generatePolygon(9, 100, -250, -150),        // октагон справа
+//     //generateRectangle(200, 100, -250, -150), // прямоугольник слева сверху
+//     generatePolygon(9, 120, 250, 50),        // октагон справа
+//     generatePolygon(9, 80, -200, 200),      // додекагон снизу слева
+//     generatePolygon(9, 80, 200, 250),       // додекагон снизу справа
+//     //generateRectangle(150, 150, 200, -200)   // квадрат справа сверху
+// ];
+
+const objects = new Array(4).fill(null).map(() => generatePolygon(9, 80, Math.random() * W-W/2, Math.random() * H-H/2 ));
 
 const boundingBoxes = objects.map(obj => {
     const min = { x: Infinity, y: Infinity };
@@ -254,19 +256,24 @@ function draw(x, y, rayCount, depth, step, optimize = 1) {
                     const newJ = epoch - step;
                     const newRay = { x: dir.x * newJ + ray.x, y: dir.y * newJ + ray.y };
                     //ctx.fillRect(newRay.x, newRay.y, 1, 1);
-                    //const newHit = objects.some(obj => pointInPolygon(newRay, obj));
-                    const newHit = pointInPolygon(newRay, hit.shape);
+                    const newHit = objects.filter((_, i) => {
+                        const obj = boundingBoxes[i];
+                        const isInBoundingBox = newRay.x >= obj.min.x && newRay.x <= obj.max.x && newRay.y >= obj.min.y && newRay.y <= obj.max.y;
+                        return isInBoundingBox
+                    }).find(obj => pointInPolygon(newRay, obj.shape));
+                    //const newHit = pointInPolygon(newRay, hit.shape);
                     if (newHit) {
-                        hitCount++;
-                        const hitColor = { r: hit.color.r , g: hit.color.g, b: hit.color.b };
-                        // accumulatedColor = { r: accumulatedColor.r * hitColor.r / 255, g: accumulatedColor.g * hitColor.g / 255, b: accumulatedColor.b * hitColor.b / 255 };
-                        // return { x: newRay.x, y: newRay.y, theta: a, depth: j, r: accumulatedColor.r, g: accumulatedColor.g, b: accumulatedColor.b };
                         ctx.beginPath()
                         ctx.moveTo(lastHitPoint.x, lastHitPoint.y)
                         ctx.lineTo(newRay.x, newRay.y)
                         ctx.stroke()
+                        const totalJ = j + newJ;
+                        hitCount++;
+                        const hitColor = { r: hit.color.r , g: hit.color.g, b: hit.color.b };
+                        // accumulatedColor = { r: accumulatedColor.r * hitColor.r / 255, g: accumulatedColor.g * hitColor.g / 255, b: accumulatedColor.b * hitColor.b / 255 };
+                        // return { x: newRay.x, y: newRay.y, theta: a, depth: j, r: accumulatedColor.r, g: accumulatedColor.g, b: accumulatedColor.b };
                         lastHitPoint = {x: newRay.x, y: newRay.y}
-                        accumulatedColor = { r: accumulatedColor.r * hitColor.r / 255, g: accumulatedColor.g * hitColor.g / 255, b: accumulatedColor.b * hitColor.b / 255 };
+                        accumulatedColor = { r: accumulatedColor.r * hitColor.r / 255 / totalJ * 100, g: accumulatedColor.g * hitColor.g / 255 / totalJ * 100, b: accumulatedColor.b * hitColor.b / 255 / totalJ * 100 };
                         const normal = getNormalAt(newRay.x, newRay.y, hit.shape, 1);
                         const dot = dir.x * normal.x + dir.y * normal.y;
                         dir.x = dir.x - 2 * dot * normal.x;
@@ -300,8 +307,8 @@ function draw(x, y, rayCount, depth, step, optimize = 1) {
             //const midDist = (Math.hypot(x - r1.x, y - r1.y) + Math.hypot(x - r2.x, y - r2.y)) / 2;
             //const distBetweenHits = Math.abs(Math.hypot(x - r1.x, y - r1.y) - Math.hypot(x - r2.x, y - r2.y));
             //const angleDiff = Math.abs(Math.atan2(r1.y - y, r1.x - x) - Math.atan2(r2.y - y, r2.x - x))
-            const colorDiff = (Math.abs(r1.r - r2.r) + Math.abs(r1.g - r2.g) + Math.abs(r1.b - r2.b)) / constant;
-            if (colorDiff >= 0.01) {
+            const colorDiff = (Math.abs(Math.min(r1.r, 255) - Math.min(r2.r, 255)) + Math.abs(Math.min(r1.g, 255) - Math.min(r2.g, 255)) + Math.abs(Math.min(r1.b, 255) - Math.min(r2.b, 255))) / constant;
+            if (colorDiff >= 0.1) {
                 const midAngle = angleMid(r1.theta, r2.theta);
                 const newRay = trace(midAngle, step);
                 //rays = [...rays.slice(0, i), newRay, ...rays.slice(i + 1)];
@@ -376,8 +383,8 @@ const render = () => {
     })
     applyBloom(traceCtx, traceCanvas, bloomCtx, bloomCanvas);
     applyBloom(ctx, canvas, bloomCtx2, bloomCanvas2);
-    x += (mouseX - x) / 50;
-    y += (mouseY - y) / 50;
+    x += (mouseX - x) / 1;
+    y += (mouseY - y) / 1;
     requestAnimationFrame(render);
 }
 canvas.onmousemove = (e) => {
